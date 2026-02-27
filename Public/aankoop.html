@@ -3,12 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Machine Details - PECABO</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .detail-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .machine-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .machine-image img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .machine-info h2 {
+            margin-top: 0;
+            font-size: 28px;
+        }
+        .machine-info p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .specs-detail {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .specs-detail p {
+            margin: 8px 0;
+        }
+        .badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #007BFF;
+            text-decoration: none;
+        }
+        /* action button styles */
+        .action-container {
+            margin-top: 20px;
+        }
+        .action-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .action-button:not(.rented) {
+            background: #007BFF;
+            color: white;
+        }
+        .action-button.rented {
+            background: #f44336;
+            color: white;
+            font-size: 1.5em;
+        }
+        .action-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .error {
+            color: red;
+            padding: 20px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .machine-detail {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
     <header class="topbar">
-  <h1>PECABO Machineverhuur</h1>
-</header>
+        <h1>PECABO Machineverhuur</h1>
+    </header>
+
+    <div class="detail-container">
+        <a href="index.html" class="back-link">← Terug naar overzicht</a>
+        <div id="detail-content"></div>
+    </div>
+
+    <script>
+        async function loadMachineDetail() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            const contentDiv = document.getElementById('detail-content');
+            
+            console.log('URL:', window.location.href);
+            console.log('Search:', window.location.search);
+            console.log('ID from URL:', id);
+            
+            if (id === null || id === undefined || id === '') {
+                contentDiv.innerHTML = '<div class="error">Geen machine ID opgegeven. <a href="index.html">Ga terug</a></div>';
+                return;
+            }
+
+            try {
+                // Fetch all machines and find the one with matching ID
+                const response = await fetch('/api/machines');
+                const machines = await response.json();
+                // match by machine_id field from DB or index if not present
+                const machine = machines.find(m => (m.machine_id ?? m.id ?? m.idx) == id);
+                
+                if (!machine) {
+                    contentDiv.innerHTML = '<div class="error">Machine niet gevonden. <a href="index.html">Ga terug</a></div>';
+                    return;
+                }
+
+                // Determine image
+                let imgSrc = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="24">Geen afbeelding</text></svg>';
+                if (Array.isArray(machine.images) && machine.images.length) {
+                    imgSrc = machine.images[0];
+                } else if (typeof machine.images === 'string' && machine.images.trim()) {
+                    imgSrc = machine.images.trim();
+                }
+
+                // determine availability: treat explicit false/"false" as unavailable
+                const beschikbaar =
+                    machine.beschikbaar === true ||
+                    String(machine.beschikbaar).toLowerCase() === 'true';
+                const name = machine.name || 'Onbekende machine';
+                const description = machine.description || 'Geen beschrijving beschikbaar';
+                const weight = machine.weight !== undefined ? `${machine.weight} ton` : 'Onbekend';
+                const price = machine.price_per_day !== undefined ? `€${machine.price_per_day}/dag` : 'Prijs niet beschikbaar';
+                const categorie = machine.type || 'Onbekend';
+
+                contentDiv.innerHTML = `
+                    <div class="machine-detail">
+                        <div class="machine-image">
+                            <img src="${imgSrc}" alt="${name}">
+                        </div>
+                        <div class="machine-info">
+                            <h2>${name}</h2>
+                            <p><strong>Beschrijving:</strong> ${description}</p>
+                            <div class="specs-detail">
+                                <p><strong>Categorie:</strong> ${categorie}</p>
+                                <p><strong>Gewicht:</strong> ${weight}</p>
+                                <p><strong>Prijs per dag:</strong> ${price}</p>
+                            </div>
+                            <div class="action-container">
+                                ${beschikbaar
+                                    ? '<button id="pay-button" class="action-button">Betaal</button>'
+                                    : '<button id="rented-button" class="action-button rented" disabled>Verhuurd</button>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // attach event listener to pay button if available
+                if (beschikbaar) {
+                    const payBtn = document.getElementById('pay-button');
+                    if (payBtn) {
+                        payBtn.addEventListener('click', () => {
+                            // navigate to payment page with machine id
+                            window.location.href = `betaal.html?id=${id}`;
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading machine:', error);
+                contentDiv.innerHTML = '<div class="error">Fout bij het laden van de machine. <a href="index.html">Ga terug</a></div>';
+            }
+        }
+
+        // Load the machine details when the page loads
+        loadMachineDetail();
+    </script>
 </body>
 </html>

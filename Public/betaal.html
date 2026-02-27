@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Details - PECABO</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+    <header class="topbar">
+        <h1>PECABO Machineverhuur</h1>
+    </header>
+    
+<body>
+    <div class="detail-container">
+        <a href="index.html" class="back-link">← Terug naar overzicht</a>
+        <div class="payment-container">
+            <h2>Betaal voor machine</h2>
+            <p id="machine-info">Laden...</p>
+            <button id="confirm-button">Bevestig betaling</button>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        const info = document.getElementById('machine-info');
+        if (id) {
+            info.textContent = `Machine ID: ${id}`;
+        } else {
+            info.textContent = 'Geen machine geselecteerd';
+            document.getElementById('confirm-button').disabled = true;
+        }
+
+        document.getElementById('confirm-button').addEventListener('click', () => {
+            alert('Betaling afgerond! Bedankt.');
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>

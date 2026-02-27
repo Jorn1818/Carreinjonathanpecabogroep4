@@ -22,8 +22,9 @@ const server = http.createServer((req, res) => {
         let sql = 'SELECT * FROM machines';
         const params = [];
         if (category && category !== 'all') {
-          // Use case-insensitive, trimmed comparison to tolerate DB inconsistencies
-          sql += ' WHERE LOWER(TRIM(categorie)) = LOWER(TRIM(?))';
+          // Use case-insensitive, trimmed comparison on the 'type' column instead of the
+          // nonexistent 'categorie' field.
+          sql += ' WHERE LOWER(TRIM(type)) = LOWER(TRIM(?))';
           params.push((category || '').trim());
           console.log('Machines query with category (normalized):', (category || '').trim());
         }
@@ -35,16 +36,19 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ error: 'Database error: ' + err.message }))
             return
           }
-          console.log('Machines retrieved:', rows)
+          // map machine_id to id for convenience in the client
+          const result = (rows || []).map(r => ({ ...r, id: r.machine_id }));
+          console.log('Machines retrieved:', result)
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify(rows || []))
+          res.end(JSON.stringify(result))
         })
         return
       }
 
       if (urlObj.pathname === '/api/categories') {
-        db.all('SELECT DISTINCT categorie FROM machines ORDER BY categorie', (err, rows) => {
+        // use the 'type' column as the category field
+        db.all('SELECT DISTINCT type FROM machines ORDER BY type', (err, rows) => {
           if (err) {
             console.error('Database query error (categories):', err)
             res.statusCode = 500
@@ -53,7 +57,7 @@ const server = http.createServer((req, res) => {
             return
           }
           const categories = (rows || [])
-            .map(r => (r.categorie || '').toString().trim())
+            .map(r => (r.type || '').toString().trim())
             .filter(Boolean);
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
@@ -94,15 +98,20 @@ const server = http.createServer((req, res) => {
         return
       }
       
-      // Set correct content type
+      // Set correct content type based on file extension (without query string)
       let contentType = 'text/plain'
-      if (req.url.endsWith('.css')) contentType = 'text/css'
-      else if (req.url.endsWith('.js')) contentType = 'application/javascript'
-      else if (req.url.endsWith('.html')) contentType = 'text/html'
-      else if (req.url.endsWith('.jpg') || req.url.endsWith('.jpeg')) contentType = 'image/jpeg'
-      else if (req.url.endsWith('.png')) contentType = 'image/png'
-      else if (req.url.endsWith('.gif')) contentType = 'image/gif'
-      
+      if (rawUrl.endsWith('.css')) contentType = 'text/css'
+      else if (rawUrl.endsWith('.js')) contentType = 'application/javascript'
+      else if (rawUrl.endsWith('.html')) contentType = 'text/html'
+      else if (rawUrl.endsWith('.jpg') || rawUrl.endsWith('.jpeg')) contentType = 'image/jpeg'
+      else if (rawUrl.endsWith('.png')) contentType = 'image/png'
+      else if (rawUrl.endsWith('.gif')) contentType = 'image/gif'
+      else
+      {
+        contentType = 'text/html'
+
+      }
+
       res.statusCode = 200
       res.setHeader('Content-Type', contentType)
       res.end(inhoud)

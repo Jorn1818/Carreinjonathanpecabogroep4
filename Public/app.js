@@ -60,9 +60,11 @@ function renderMachines() {
   list.forEach((machine, idx) => {
     const card = document.createElement("a");
     card.className = "card";
-    card.href = `aankoop.html?id=${machine.id ?? idx}`;
-    card.target = "_blank";
-    card.dataset.id = machine.id ?? idx;
+    // use machine_id from DB if available, otherwise fallback to index
+    const mid = machine.machine_id ?? idx;
+    card.href = `aankoop.html?id=${mid}`;
+    card.dataset.id = mid;
+
 
     // determine image src (handle array or string or missing)
     let imgSrc = placeholder;
