@@ -52,10 +52,18 @@
             font-weight: bold;
         }
         .back-link {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             margin-bottom: 20px;
-            color: #007BFF;
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #1faa00, #ff8c00);
+            color: #ffffff;
             text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 6px 14px rgba(31, 170, 0, 0.22);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
         }
         /* action button styles */
         .action-container {
@@ -68,21 +76,23 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .action-button:not(.rented) {
-            background: #007BFF;
-            color: white;
-        }
-        .action-button.rented {
-            background: #f44336;
-            color: white;
-            font-size: 1.5em;
-        }
         .action-button:disabled {
             cursor: not-allowed;
             opacity: 0.6;
         }
         .back-link:hover {
-            text-decoration: underline;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(255, 140, 0, 0.28);
+            filter: brightness(1.03);
+            text-decoration: none;
+        }
+        .back-link:active {
+            transform: translateY(0);
+            box-shadow: 0 5px 12px rgba(31, 170, 0, 0.2);
+        }
+        .back-link:focus-visible {
+            outline: 3px solid rgba(255, 140, 0, 0.35);
+            outline-offset: 2px;
         }
         .error {
             color: red;
@@ -164,29 +174,78 @@
                                 <p><strong>Gewicht:</strong> ${weight}</p>
                                 <p><strong>Prijs per dag:</strong> ${price}</p>
                             </div>
+                            <div id="options-container" class="specs-detail">
+                                <h3>Opties</h3>
+                                <p id="options-loading">Opties laden...</p>
+                            </div>
                             <div class="action-container">
                                 ${beschikbaar
-                                    ? '<button id="pay-button" class="action-button">Betaal</button>'
-                                    : '<button id="rented-button" class="action-button rented" disabled>Verhuurd</button>'}
+                                    ? '<button id="pay-button" class="action-button verhuurd-button" disabled>Verhuurd</button>'
+                                    : '<button id="rented-button" class="action-button betaal-button" enabled>Betaal</button>'}
                             </div>
                         </div>
                     </div>
                 `;
 
-                // attach event listener to pay button if available
-                if (beschikbaar) {
-                    const payBtn = document.getElementById('pay-button');
-                    if (payBtn) {
-                        payBtn.addEventListener('click', () => {
-                            // navigate to payment page with machine id
-                            window.location.href = `betaal.html?id=${id}`;
-                        });
-                    }
+                // Load linked options for this machine
+                loadMachineOptions(id);
+
+                // Handle option state and payment navigation
+                const navigateToPayment = () => {
+                    const selectedOptionIds = getSelectedOptionIds();
+                    const optionsQuery = encodeURIComponent(JSON.stringify(selectedOptionIds));
+                    window.location.href = `betaal.html?id=${id}&options=${optionsQuery}`;
+                };
+
+                const payBtn = document.getElementById('pay-button');
+                const rentedBtn = document.getElementById('rented-button');
+                if (payBtn) {
+                    payBtn.addEventListener('click', navigateToPayment);
+                }
+                if (rentedBtn) {
+                    rentedBtn.addEventListener('click', navigateToPayment);
                 }
             } catch (error) {
                 console.error('Error loading machine:', error);
-                contentDiv.innerHTML = '<div class="error">Fout bij het laden van de machine. <a href="index.html">Ga terug</a></div>';
+                contentDiv.innerHTML ='<div class="error">Fout bij het laden van de machine.<a href="index.html">Ga terug</a></div>';
             }
+        }
+
+        async function loadMachineOptions(machineId) {
+            const optionsContainer = document.getElementById('options-container');
+            const loadingEl = document.getElementById('options-loading');
+            if (!optionsContainer) return;
+
+            try {
+                const response = await fetch(`/api/options?machine_id=${encodeURIComponent(machineId)}`);
+                const options = await response.json();
+
+                if (!Array.isArray(options) || options.length === 0) {
+                    optionsContainer.innerHTML = '<p>Geen opties beschikbaar voor deze machine.</p>';
+                    return;
+                }
+
+                optionsContainer.innerHTML = '<h3>Opties</h3>' + options.map((opt) => {
+                    const extra = (opt.extra_price !== null && opt.extra_price !== undefined && Number(opt.extra_price) !== 0)
+                        ? ` (+€${Number(opt.extra_price).toFixed(2)})`
+                        : '';
+                    return `
+                    <label>
+                        <input type="checkbox" name="machine-option" data-option-id="${opt.option_id}" value="${opt.option_id}" />
+                        ${opt.name}${extra}
+                    </label>`;
+                }).join('<br>');
+
+                // Clear intermediate loading text if it was present.
+                if (loadingEl) loadingEl.remove();
+            } catch (err) {
+                console.error('Error loading options:', err);
+                optionsContainer.innerHTML = '<p>Opties konden niet worden geladen.</p>';
+            }
+        }
+
+        function getSelectedOptionIds() {
+            return Array.from(document.querySelectorAll('input[name="machine-option"]:checked')).map(el => el.dataset.optionId);
         }
 
         // Load the machine details when the page loads

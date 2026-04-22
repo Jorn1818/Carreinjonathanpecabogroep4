@@ -46,6 +46,61 @@ const server = http.createServer((req, res) => {
         return
       }
 
+      if (urlObj.pathname === '/api/options') {
+        const machineId = urlObj.searchParams.get('machine_id');
+        db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='machine_options'", (tableErr, tableRow) => {
+          if (tableErr) {
+            console.error('Database query error (options/table check):', tableErr)
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'Database error: ' + tableErr.message }))
+            return
+          }
+
+          const hasMachineOptions = !!tableRow;
+          let sql = '';
+          const params = [];
+
+          if (hasMachineOptions) {
+            sql = `
+              SELECT DISTINCT
+                o.option_id,
+                o.name,
+                o.extra_price,
+                mo.machine_id
+              FROM options o
+              INNER JOIN machine_options mo ON mo.option_id = o.option_id
+            `;
+            if (machineId) {
+              sql += ' WHERE mo.machine_id = ?';
+              params.push(machineId);
+            }
+            sql += ' ORDER BY o.option_id';
+          } else {
+            sql = 'SELECT * FROM options';
+            if (machineId) {
+              sql += ' WHERE machine_id = ?';
+              params.push(machineId);
+            }
+            sql += ' ORDER BY option_id';
+          }
+
+          db.all(sql, params, (err, rows) => {
+            if (err) {
+              console.error('Database query error (options):', err)
+              res.statusCode = 500
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: 'Database error: ' + err.message }))
+              return
+            }
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(rows || []))
+          })
+        })
+        return
+      }
+
       if (urlObj.pathname === '/api/categories') {
         // use the 'type' column as the category field
         db.all('SELECT DISTINCT type FROM machines ORDER BY type', (err, rows) => {
