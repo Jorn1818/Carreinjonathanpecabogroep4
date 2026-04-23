@@ -47,26 +47,6 @@ body {
     border-radius: 10px;
   }
   
-  .filters {
-    margin: 30px 0;
-    display: flex;
-    gap: 10px;
-  }
-  
-  .filters button {
-    padding: 10px 16px;
-    border-radius: 20px;
-    border: 1px solid #ddd;
-    background: white;
-    cursor: pointer;
-  }
-  
-  .filters button.active {
-    background: #1faa00;
-    color: white;
-    border-color: #1faa00;
-  }
-  
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

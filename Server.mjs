@@ -100,28 +100,7 @@ const server = http.createServer((req, res) => {
         })
         return
       }
-
-      if (urlObj.pathname === '/api/categories') {
-        // use the 'type' column as the category field
-        db.all('SELECT DISTINCT type FROM machines ORDER BY type', (err, rows) => {
-          if (err) {
-            console.error('Database query error (categories):', err)
-            res.statusCode = 500
-            res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ error: 'Database error: ' + err.message }))
-            return
-          }
-          const categories = (rows || [])
-            .map(r => (r.type || '').toString().trim())
-            .filter(Boolean);
-          res.statusCode = 200
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify(categories))
-        })
-        return
-      }
     } catch (e) {
-      // If URL parsing fails, fall through to static handling below
       console.error('URL parse error:', e)
     }
   }
@@ -140,8 +119,6 @@ const server = http.createServer((req, res) => {
       res.end(inhoud)
     })
   } else if (req.method === 'GET') {
-    // Serve static files
-    // Normalize the request URL so a leading slash doesn't escape the Public folder
     const rawUrl = decodeURIComponent(req.url.split('?')[0].split('#')[0] || '');
     const requestedPath = rawUrl.replace(/^\/+/, '');
     const filePath = path.join(__dirname, 'Public', requestedPath || '');
@@ -152,8 +129,7 @@ const server = http.createServer((req, res) => {
         res.end('Bestand niet gevonden')
         return
       }
-      
-      // Set correct content type based on file extension (without query string)
+
       let contentType = 'text/plain'
       if (rawUrl.endsWith('.css')) contentType = 'text/css'
       else if (rawUrl.endsWith('.js')) contentType = 'application/javascript'
