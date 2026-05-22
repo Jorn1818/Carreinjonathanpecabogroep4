@@ -141,10 +141,7 @@ body {
     cursor: pointer;
 }
 
-/* Utility */
 .hidden { display: none; }
-
-/* Admin bookings styles (extracted from admin-bookings.html) */
 .admin-shell {
   max-width: 1100px;
   margin: 28px auto;
@@ -232,7 +229,6 @@ body {
   }
 }
 
-/* Machine detail / aankoop styles (extracted from aankoop.html) */
 .detail-container {
   max-width: 1000px;
   margin: 20px auto;
@@ -396,7 +392,6 @@ body {
   }
 }
 
-/* Payment page styles (extracted from betaal.html) */
 .payment-shell {
   max-width: 920px;
   margin: 32px auto;
