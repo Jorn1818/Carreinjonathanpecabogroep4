@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Boekingen - PECABO</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <h1>PECABO Admin</h1>
+    </header>
+
+    <main class="admin-shell">
+        <a href="index.html" class="back-link">← Terug naar overzicht</a>
+
+        <section class="admin-panel">
+            <h2>Boekingen Overzicht (Prive)</h2>
+            <p>Alleen met admin key zichtbaar. Deze pagina is niet gelinkt in het menu.</p>
+
+            <div class="secret-row">
+                <input id="admin-key" type="password" placeholder="Voer BOOKINGS_ADMIN_KEY in" autocomplete="off">
+                <button id="load-button" type="button">Laad boekingen</button>
+            </div>
+
+            <div class="admin-status" id="admin-status">Nog niet geladen.</div>
+
+            <div id="table-wrap"></div>
+        </section>
+    </main>
+
+    <script>
+        const adminKeyInput = document.getElementById('admin-key');
+        const loadButton = document.getElementById('load-button');
+        const adminStatus = document.getElementById('admin-status');
+        const tableWrap = document.getElementById('table-wrap');
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function renderRows(rows) {
+            if (!Array.isArray(rows) || rows.length === 0) {
+                tableWrap.innerHTML = '<div class="empty-state">Geen betaalde boekingen gevonden.</div>';
+                return;
+            }
+
+            const body = rows.map((row) => `
+                <tr>
+                    <td>${escapeHtml(row.booking_id)}</td>
+                    <td>${escapeHtml(row.machine_name || 'Onbekend')}</td>
+                    <td>${escapeHtml(row.machine_id)}</td>
+                    <td>${escapeHtml(row.start_date)}</td>
+                    <td>${escapeHtml(row.end_date)}</td>
+                    <td>${escapeHtml(row.customer_name || 'Onbekend')}</td>
+                    <td>${escapeHtml(row.customer_email || 'Onbekend')}</td>
+                    <td>${escapeHtml(row.status)}</td>
+                </tr>
+            `).join('');
+
+            tableWrap.innerHTML = `
+                <table class="bookings-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Machine</th>
+                            <th>Machine ID</th>
+                            <th>Van</th>
+                            <th>Tot</th>
+                            <th>Klant</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>${body}</tbody>
+                </table>
+            `;
+        }
+
+        async function loadBookings() {
+            const key = (adminKeyInput.value || '').trim();
+            if (!key) {
+                adminStatus.textContent = 'Vul eerst de admin key in.';
+                adminStatus.style.color = '#a40000';
+                return;
+            }
+
+            adminStatus.textContent = 'Boekingen laden...';
+            adminStatus.style.color = '#555';
+            tableWrap.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/admin/bookings', {
+                    headers: {
+                        'x-admin-key': key
+                    }
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Kon boekingen niet ophalen.');
+                }
+
+                adminStatus.textContent = `${data.length} boeking(en) geladen.`;
+                adminStatus.style.color = '#0d7a2d';
+                renderRows(data);
+            } catch (error) {
+                adminStatus.textContent = error.message;
+                adminStatus.style.color = '#a40000';
+                tableWrap.innerHTML = '';
+            }
+        }
+
+        loadButton.addEventListener('click', loadBookings);
+        adminKeyInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                loadBookings();
+            }
+        });
+    </script>
+</body>
+</html>

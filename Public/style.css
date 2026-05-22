@@ -47,6 +47,26 @@ body {
     border-radius: 10px;
   }
   
+  .filters {
+    margin: 30px 0;
+    display: flex;
+    gap: 10px;
+  }
+  
+  .filters button {
+    padding: 10px 16px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+  }
+  
+  .filters button.active {
+    background: #1faa00;
+    color: white;
+    border-color: #1faa00;
+  }
+  
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -93,7 +113,6 @@ body {
     justify-content: space-between;
   }
   
-  /* payment page container */
   .payment-container {
     background: white;
     padding: 25px;
@@ -120,4 +139,413 @@ body {
     padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
+}
+
+/* Utility */
+.hidden { display: none; }
+
+/* Admin bookings styles (extracted from admin-bookings.html) */
+.admin-shell {
+  max-width: 1100px;
+  margin: 28px auto;
+  padding: 0 20px;
+}
+
+.admin-panel {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.admin-panel h2 {
+  margin-top: 0;
+}
+
+.secret-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.secret-row input {
+  flex: 1;
+  min-width: 240px;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.secret-row button {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #0d7a2d;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-status {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #555;
+}
+
+.bookings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.bookings-table th,
+.bookings-table td {
+  border-bottom: 1px solid #ececec;
+  text-align: left;
+  padding: 10px 8px;
+  font-size: 14px;
+}
+
+.bookings-table th {
+  background: #f5f8f5;
+  font-weight: 700;
+}
+
+.empty-state {
+  padding: 14px;
+  border-radius: 10px;
+  background: #f8faf8;
+  color: #555;
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .bookings-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* Machine detail / aankoop styles (extracted from aankoop.html) */
+.detail-container {
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+}
+.machine-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.machine-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+.machine-info h2 {
+  margin-top: 0;
+  font-size: 28px;
+}
+.machine-info p {
+  margin: 10px 0;
+  line-height: 1.6;
+}
+.specs-detail {
+  background: #f5f5f5;
+  padding: 15px;
+  border-radius: 5px;
+  margin: 15px 0;
+}
+.specs-detail p {
+  margin: 8px 0;
+}
+.price-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 15px 0;
+}
+.date-picker-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.date-picker-row label {
+  font-weight: 600;
+  color: #333;
+  min-width: 80px;
+}
+.date-picker-row input[type="date"] {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  flex: 1;
+  max-width: 150px;
+}
+.date-picker-row span {
+  color: #666;
+  font-size: 14px;
+}
+.price-row {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1faa00;
+  padding: 12px;
+  background: #f0f8f0;
+  border-radius: 4px;
+  text-align: center;
+}
+.detail-container .badge {
+  display: inline-block;
+  background: #4CAF50;
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+.booked-dates-section {
+  background: #fff9e6;
+  border-left: 4px solid #ff9800;
+  padding: 14px;
+  border-radius: 6px;
+  margin: 15px 0;
+}
+.booked-dates-section h4 {
+  margin-top: 0;
+  color: #ff6f00;
+  font-size: 15px;
+}
+.booked-dates-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.booked-dates-list li {
+  padding: 8px 0;
+  font-size: 13px;
+  color: #555;
+  border-bottom: 1px solid #ffe0b2;
+}
+.booked-dates-list li:last-child {
+  border-bottom: none;
+}
+.booked-dates-empty {
+  color: #0d7a2d;
+  font-size: 13px;
+  font-weight: 600;
+}
+.total-price {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #1faa00 0%, #0d7a2d 100%);
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(31, 170, 0, 0.3);
+  margin: 20px 0;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  box-shadow: 0 6px 14px rgba(31, 170, 0, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.action-container {
+  margin-top: 20px;
+}
+.action-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.back-link:active {
+  transform: translateY(0);
+  box-shadow: 0 5px 12px rgba(31, 170, 0, 0.2);
+}
+.back-link:focus-visible {
+  outline: 3px solid rgba(255, 140, 0, 0.35);
+  outline-offset: 2px;
+}
+.error {
+  color: red;
+  padding: 20px;
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .machine-detail {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Payment page styles (extracted from betaal.html) */
+.payment-shell {
+  max-width: 920px;
+  margin: 32px auto;
+  padding: 0 20px;
+}
+.payment-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 24px;
+}
+.payment-panel,
+.summary-panel {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+}
+.payment-panel h2,
+.summary-panel h3 {
+  margin-top: 0;
+}
+.summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.summary-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+.summary-total {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1faa00 0%, #0d7a2d 100%);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+.pay-button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: #635bff;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pay-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.status {
+  margin-top: 14px;
+  font-size: 14px;
+  color: #555;
+}
+.error-box {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff3f3;
+  color: #a40000;
+}
+.customer-fields {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+.customer-fields input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d8d8d8;
+  border-radius: 8px;
+  font-size: 14px;
+}
+@media (max-width: 820px) {
+  .payment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.success-container {
+  display: none;
+  max-width: 600px;
+  margin: 60px auto;
+  padding: 40px 20px;
+  text-align: center;
+  background: #f0f8f0;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+.success-container.show {
+  display: block;
+}
+.success-container h2 {
+  color: #0d7a2d;
+  font-size: 32px;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+.success-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+.success-container p {
+  color: #555;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+.success-details {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 20px 0;
+  text-align: left;
+}
+.success-details p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+.success-details strong {
+  color: #0d7a2d;
+}
+.home-button {
+  margin-top: 24px;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #1faa00 0%, #0d7a2d 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.home-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(31, 170, 0, 0.3);
+}
+.countdown {
+  color: #666;
+  font-size: 14px;
+  margin-top: 12px;
 }

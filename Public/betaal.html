@@ -3,39 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Machine Details - PECABO</title>
+    <title>Betalen - PECABO</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
+<body>
     <header class="topbar">
         <h1>PECABO Machineverhuur</h1>
     </header>
-    
-<body>
-    <div class="detail-container">
+
+    <main class="payment-shell">
         <a href="index.html" class="back-link">← Terug naar overzicht</a>
-        <div class="payment-container">
-            <h2>Betaal voor machine</h2>
-            <p id="machine-info">Laden...</p>
-            <button id="confirm-button">Bevestig betaling</button>
+        
+        <div class="success-container" id="success-container">
+            <div class="success-icon">✓</div>
+            <h2>Betaling Gelukt!</h2>
+            <p>Bedankt voor je boeking. Je reservering is bevestigd.</p>
+            <div class="success-details" id="success-details-box">
+                <p><strong>Machine:</strong> <span id="success-machine-name">-</span></p>
+                <p><strong>Huurperiode:</strong> <span id="success-rental-period">-</span></p>
+                <p><strong>Totaalbedrag:</strong> <span id="success-total-amount">-</span></p>
+            </div>
+            <p>Je hebt een bevestigingsmail ontvangen op het e-mailadres dat je hebt ingevoerd.</p>
+            <div class="countdown" id="countdown-timer">Je wordt over 5 seconden teruggebracht naar het overzicht...</div>
+            <button class="home-button" onclick="window.location.href='index.html'">Terug naar Overzicht</button>
         </div>
-    </div>
+        
+        <div id="payment-form-container" class="payment-form-shown">
+            <div class="payment-grid">
+            <section class="payment-panel">
+                <h2>Betaal met Stripe</h2>
+                <p id="machine-info">Laden...</p>
+                <div class="customer-fields">
+                    <input id="customer-name" type="text" placeholder="Je naam" autocomplete="name" required>
+                    <input id="customer-email" type="email" placeholder="Je e-mail" autocomplete="email" required>
+                </div>
+                <div id="payment-message" class="status"></div>
+                <button id="confirm-button" class="pay-button" disabled>Verder naar Stripe</button>
+                <div id="payment-error" class="error-box hidden"></div>
+            </section>
+
+            <aside class="summary-panel">
+                <h3>Samenvatting</h3>
+                <ul class="summary-list" id="summary-list"></ul>
+                <div class="summary-total" id="summary-total">Totaal: €0</div>
+            </aside>
+        </div>
+        </div>
+    </main>
 
     <script>
         const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        const info = document.getElementById('machine-info');
-        if (id) {
-            info.textContent = `Machine ID: ${id}`;
-        } else {
-            info.textContent = 'Geen machine geselecteerd';
-            document.getElementById('confirm-button').disabled = true;
+        const machineId = params.get('machine_id') || params.get('id');
+        const days = Number.parseInt(params.get('days') || '1', 10) || 1;
+        const startDate = params.get('start_date') || '';
+        const endDate = params.get('end_date') || '';
+        const isSuccessReturn = params.get('success') === '1';
+        const sessionId = params.get('session_id') || '';
+        
+        let optionIds = [];
+        try {
+            optionIds = JSON.parse(decodeURIComponent(params.get('options') || '[]'));
+            if (!Array.isArray(optionIds)) optionIds = [];
+        } catch {
+            optionIds = [];
         }
 
-        document.getElementById('confirm-button').addEventListener('click', () => {
-            alert('Betaling afgerond! Bedankt.');
-            window.location.href = 'index.html';
+        const machineInfoElement = document.getElementById('machine-info');
+        const paymentMessageElement = document.getElementById('payment-message');
+        const confirmButton = document.getElementById('confirm-button');
+        const paymentErrorElement = document.getElementById('payment-error');
+        const summaryListElement = document.getElementById('summary-list');
+        const summaryTotalElement = document.getElementById('summary-total');
+        const customerNameInput = document.getElementById('customer-name');
+        const customerEmailInput = document.getElementById('customer-email');
+
+        let bookingDetails = {
+            machineName: '',
+            totalPrice: '',
+            startDate: startDate,
+            endDate: endDate
+        };
+
+        async function confirmBookingFromSuccess() {
+            if (!isSuccessReturn || !sessionId) return;
+
+            try {
+                const response = await fetch('/api/confirm-booking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Boeking bevestigen is mislukt.');
+                }
+
+                showSuccessPage();
+            } catch (error) {
+                paymentErrorElement.style.display = 'block';
+                paymentErrorElement.textContent = error.message;
+            }
+        }
+
+        function showSuccessPage() {
+            document.getElementById('payment-form-container').style.display = 'none';
+            
+            const successContainer = document.getElementById('success-container');
+            successContainer.classList.add('show');
+            
+            document.getElementById('success-machine-name').textContent = bookingDetails.machineName || '-';
+            document.getElementById('success-rental-period').textContent = `${bookingDetails.startDate} tot ${bookingDetails.endDate}`;
+            document.getElementById('success-total-amount').textContent = bookingDetails.totalPrice || '-';
+            
+            startCountdownRedirect();
+        }
+
+        function startCountdownRedirect() {
+            let secondsLeft = 5;
+            const countdownElement = document.getElementById('countdown-timer');
+            
+            const countdownInterval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft > 0) {
+                    countdownElement.textContent = `Je wordt over ${secondsLeft} seconde${secondsLeft !== 1 ? 'n' : ''} teruggebracht naar het overzicht...`;
+                } else {
+                    clearInterval(countdownInterval);
+                    window.location.href = 'index.html';
+                }
+            }, 1000);
+        }
+
+        async function loadSummary() {
+            if (!machineId) {
+                machineInfoElement.textContent = 'Geen machine geselecteerd';
+                paymentMessageElement.textContent = '';
+                confirmButton.disabled = true;
+                showError('Er ontbreekt een machine ID in de URL.');
+                return;
+            }
+
+            if (!startDate || !endDate || endDate <= startDate) {
+                machineInfoElement.textContent = 'Geen geldige huurperiode geselecteerd';
+                paymentMessageElement.textContent = '';
+                confirmButton.disabled = true;
+                showError('Kies eerst een geldige start- en einddatum op de machinepagina.');
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                  `/api/payment-summary?machine_id=${encodeURIComponent(machineId)}&days=${encodeURIComponent(days)}&options=${encodeURIComponent(JSON.stringify(optionIds))}`
+                );
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Kon betalingssamenvatting niet laden.');
+                }
+
+                const dayLabel = data.days === 1 ? '' : 'en';
+                machineInfoElement.textContent = `${data.machine.name} | ${data.days} dag${dayLabel}`;
+                
+                bookingDetails.machineName = data.machine.name;
+                bookingDetails.totalPrice = `€${data.totalPrice}`;
+                
+                summaryListElement.innerHTML = '';
+                const items = [
+                    { label: 'Machinehuur', value: `€${data.basePrice}` },
+                    ...data.selectedOptions.map(option => {
+                        return {
+                            label: `${option.name}`,
+                            value: `€${Math.round(Number(option.extra_price || 0))}`
+                        };
+                    }),
+                ];
+
+                items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+                    summaryListElement.appendChild(li);
+                });
+
+                summaryTotalElement.textContent = `Totaal: €${data.totalPrice}`;
+                paymentMessageElement.textContent = 'Je gaat betalen via Stripe Checkout.';
+                confirmButton.disabled = false;
+            } catch (error) {
+                showError(error.message);
+                confirmButton.disabled = true;
+            }
+        }
+
+        function showError(message) {
+            paymentErrorElement.style.display = 'block';
+            paymentErrorElement.textContent = message;
+        }
+
+        confirmButton.addEventListener('click', async () => {
+            const customerName = String(customerNameInput.value || '').trim();
+            const customerEmail = String(customerEmailInput.value || '').trim();
+
+            if (!customerName || !customerEmail || !customerEmail.includes('@')) {
+                showError('Vul een geldige naam en e-mail in.');
+                return;
+            }
+
+            confirmButton.disabled = true;
+            paymentMessageElement.textContent = 'Stripe Checkout wordt geopend...';
+            paymentErrorElement.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/create-checkout-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        machine_id: Number(machineId),
+                        days,
+                        start_date: startDate,
+                        end_date: endDate,
+                        customer_name: customerName,
+                        customer_email: customerEmail,
+                        option_ids: optionIds,
+                        success_url: buildReturnUrl('success', true),
+                        cancel_url: buildReturnUrl('cancel', false)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Kon Stripe sessie niet aanmaken.');
+                }
+
+                window.location.href = data.url;
+            } catch (error) {
+                showError(error.message);
+                paymentMessageElement.textContent = 'Stripe checkout is niet gestart.';
+                confirmButton.disabled = false;
+            }
         });
+
+        function buildReturnUrl(type, isSuccess) {
+            const baseUrl = type === 'success'
+                ? `${window.location.origin}/betaal.html?success=1&session_id={CHECKOUT_SESSION_ID}`
+                : `${window.location.origin}/betaal.html`;
+            
+            const params = [
+                `machine_id=${encodeURIComponent(machineId)}`,
+                `days=${encodeURIComponent(days)}`,
+                `options=${encodeURIComponent(JSON.stringify(optionIds))}`,
+                `start_date=${encodeURIComponent(startDate)}`,
+                `end_date=${encodeURIComponent(endDate)}`
+            ];
+            
+            return baseUrl + (baseUrl.includes('?') ? '&' : '?') + params.join('&');
+        }
+
+        async function initializePage() {
+            await loadSummary();
+            await confirmBookingFromSuccess();
+        }
+        
+        initializePage();
     </script>
 </body>
 </html>

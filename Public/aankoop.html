@@ -5,78 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Machine Details - PECABO</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .detail-container {
-            max-width: 1000px;
-            margin: 20px auto;
-            padding: 20px;
-        }
-        .machine-detail {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .machine-image img {
-            width: 100%;
-            height: auto;
-            border-radius: 8px;
-        }
-        .machine-info h2 {
-            margin-top: 0;
-            font-size: 28px;
-        }
-        .machine-info p {
-            margin: 10px 0;
-            line-height: 1.6;
-        }
-        .specs-detail {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-        }
-        .specs-detail p {
-            margin: 8px 0;
-        }
-        .badge {
-            display: inline-block;
-            background: #4CAF50;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
-        /* action button styles */
-        .action-container {
-            margin-top: 20px;
-        }
-        .action-button {
-            padding: 10px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .action-button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        .error {
-            color: red;
-            padding: 20px;
-            text-align: center;
-        }
-        @media (max-width: 768px) {
-            .machine-detail {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
 </head>
 <body>
     <header class="topbar">
@@ -89,69 +17,85 @@
     </div>
 
     <script>
+        const PLACEHOLDER_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="24">Geen afbeelding</text></svg>';
+
+        let currentPricePerDay = 0;
+        let currentMachineId = null;
+        let isAvailableForDates = false;
+
         async function loadMachineDetail() {
             const params = new URLSearchParams(window.location.search);
-            const id = params.get('id');
+            const machineId = params.get('id');
             const contentDiv = document.getElementById('detail-content');
             
-            console.log('URL:', window.location.href);
-            console.log('Search:', window.location.search);
-            console.log('ID from URL:', id);
-            
-            if (id === null || id === undefined || id === '') {
+            if (!machineId) {
                 contentDiv.innerHTML = '<div class="error">Geen machine ID opgegeven. <a href="index.html">Ga terug</a></div>';
                 return;
             }
 
             try {
-                // Fetch all machines and find the one with matching ID
                 const response = await fetch('/api/machines');
                 const machines = await response.json();
-                // match by machine_id field from DB or index if not present
-                const machine = machines.find(m => (m.machine_id ?? m.id ?? m.idx) == id);
+                const machine = machines.find(m => (m.machine_id ?? m.id ?? m.idx) == machineId);
                 
                 if (!machine) {
                     contentDiv.innerHTML = '<div class="error">Machine niet gevonden. <a href="index.html">Ga terug</a></div>';
                     return;
                 }
 
-                // Determine image
-                let imgSrc = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="24">Geen afbeelding</text></svg>';
-                if (Array.isArray(machine.images) && machine.images.length) {
-                    imgSrc = machine.images[0];
+                let imageSource = PLACEHOLDER_IMAGE;
+                if (Array.isArray(machine.images) && machine.images.length > 0) {
+                    imageSource = machine.images[0];
                 } else if (typeof machine.images === 'string' && machine.images.trim()) {
-                    imgSrc = machine.images.trim();
+                    imageSource = machine.images.trim();
                 }
 
-                // determine availability: treat explicit false/"false" as unavailable
-                const beschikbaar =
-                    machine.beschikbaar === true ||
-                    String(machine.beschikbaar).toLowerCase() === 'true';
-                const name = machine.name || 'Onbekende machine';
-                const description = machine.description || 'Geen beschrijving beschikbaar';
-                const weight = machine.weight !== undefined ? `${machine.weight} ton` : 'Onbekend';
-                const price = machine.price_per_day !== undefined ? `€${machine.price_per_day}/dag` : 'Prijs niet beschikbaar';
-                const categorie = machine.type || 'Onbekend';
+                const isAvailable = machine.beschikbaar === true 
+                  || String(machine.beschikbaar).toLowerCase() === 'true';
+                const machineName = machine.name || 'Onbekende machine';
+                const machineDescription = machine.description || 'Geen beschrijving beschikbaar';
+                const machineWeight = machine.weight !== undefined ? `${machine.weight} ton` : 'Onbekend';
+                const machinePrice = machine.price_per_day !== undefined ? `€${machine.price_per_day}/dag` : 'Prijs niet beschikbaar';
+                const machineCategory = machine.type || 'Onbekend';
 
                 contentDiv.innerHTML = `
                     <div class="machine-detail">
                         <div class="machine-image">
-                            <img src="${imgSrc}" alt="${name}">
+                            <img src="${imageSource}" alt="${machineName}">
                         </div>
-                        <div class="machine-info">
-                            <h2>${name}</h2>
-                            <p><strong>Beschrijving:</strong> ${description}</p>
+                        <div class="machine-info" data-price-per-day="${machine.price_per_day || 0}">
+                            <h2>${machineName}</h2>
+                            <p><strong>Beschrijving:</strong> ${machineDescription}</p>
                             <div class="specs-detail">
-                                <p><strong>Categorie:</strong> ${categorie}</p>
-                                <p><strong>Gewicht:</strong> ${weight}</p>
-                                <p><strong>Prijs per dag:</strong> ${price}</p>
+                                <p><strong>Categorie:</strong> ${machineCategory}</p>
+                                <p><strong>Gewicht:</strong> ${machineWeight}</p>
+                                <p><strong>Prijs per dag:</strong> ${machinePrice}</p>
+                            </div>
+                            <div class="price-section">
+                                <div class="date-picker-row">
+                                    <label for="start-date">Start datum:</label>
+                                    <input type="date" id="start-date" />
+                                </div>
+                                <div class="date-picker-row">
+                                    <label for="end-date">Eind datum:</label>
+                                    <input type="date" id="end-date" />
+                                    <span id="days-display"></span>
+                                </div>
+                                <div id="availability-message"></div>
+                            </div>
+                            <div id="booked-dates-container" class="booked-dates-section hidden">
+                                <h4>⚠️ Reeds geboekt op deze data:</h4>
+                                <ul class="booked-dates-list" id="booked-dates-list"></ul>
                             </div>
                             <div id="options-container" class="specs-detail">
                                 <h3>Opties</h3>
                                 <p id="options-loading">Opties laden...</p>
                             </div>
+                            <div class="total-price" id="total-price-display">
+                                Totaal: €${Math.round(machine.price_per_day || 0)}
+                            </div>
                             <div class="action-container">
-                                ${beschikbaar
+                                ${isAvailable
                                     ? '<button id="pay-button" class="action-button verhuurd-button" disabled>Verhuurd</button>'
                                     : '<button id="rented-button" class="action-button betaal-button" enabled>Betaal</button>'}
                             </div>
@@ -159,27 +103,163 @@
                     </div>
                 `;
 
-                // Load linked options for this machine
-                loadMachineOptions(id);
+                currentPricePerDay = machine.price_per_day || 0;
+                currentMachineId = machineId;
+                
+                const startDateInput = document.getElementById('start-date');
+                const endDateInput = document.getElementById('end-date');
+                
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                startDateInput.valueAsDate = today;
+                endDateInput.valueAsDate = tomorrow;
+                
+                startDateInput.addEventListener('change', updatePriceFromDates);
+                endDateInput.addEventListener('change', updatePriceFromDates);
+                
+                const payButton = document.getElementById('pay-button');
+                const rentedButton = document.getElementById('rented-button');
+                if (payButton) payButton.addEventListener('click', navigateToPayment);
+                if (rentedButton) rentedButton.addEventListener('click', navigateToPayment);
+                
+                loadMachineOptions(machineId);
+                loadBookedDates(machineId);
+                
+                updatePriceFromDates();
 
-                // Handle option state and payment navigation
-                const navigateToPayment = () => {
-                    const selectedOptionIds = getSelectedOptionIds();
-                    const optionsQuery = encodeURIComponent(JSON.stringify(selectedOptionIds));
-                    window.location.href = `betaal.html?id=${id}&options=${optionsQuery}`;
-                };
-
-                const payBtn = document.getElementById('pay-button');
-                const rentedBtn = document.getElementById('rented-button');
-                if (payBtn) {
-                    payBtn.addEventListener('click', navigateToPayment);
-                }
-                if (rentedBtn) {
-                    rentedBtn.addEventListener('click', navigateToPayment);
-                }
             } catch (error) {
                 console.error('Error loading machine:', error);
-                contentDiv.innerHTML ='<div class="error">Fout bij het laden van de machine.<a href="index.html">Ga terug</a></div>';
+                contentDiv.innerHTML = '<div class="error">Fout bij het laden van de machine.<a href="index.html">Ga terug</a></div>';
+            }
+        }
+
+        function updatePriceFromDates() {
+            const startDateInput = document.getElementById('start-date');
+            const endDateInput = document.getElementById('end-date');
+            const daysDisplay = document.getElementById('days-display');
+            const startDate = startDateInput?.valueAsDate;
+            const endDate = endDateInput?.valueAsDate;
+            
+            if (startDate && endDate && endDate >= startDate) {
+                const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                const finalDays = Math.max(1, days);
+                
+                daysDisplay.textContent = `(${finalDays} dag${finalDays !== 1 ? 'en' : ''})`;
+                
+                updateTotalPrice(finalDays, currentPricePerDay);
+                checkAvailability(formatDateToISO(startDate), formatDateToISO(endDate));
+            } else {
+                setPayButtonsEnabled(false);
+            }
+        }
+
+        function navigateToPayment() {
+            if (!isAvailableForDates) return;
+            
+            const startDateInput = document.getElementById('start-date');
+            const endDateInput = document.getElementById('end-date');
+            const startDate = startDateInput?.valueAsDate;
+            const endDate = endDateInput?.valueAsDate;
+            
+            if (!startDate || !endDate || endDate <= startDate) return;
+            
+            const days = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)));
+            const selectedOptionIds = getSelectedOptionIds();
+            
+            const optionsQuery = encodeURIComponent(JSON.stringify(selectedOptionIds));
+            const startDateQuery = encodeURIComponent(formatDateToISO(startDate));
+            const endDateQuery = encodeURIComponent(formatDateToISO(endDate));
+            
+            window.location.href = `betaal.html?id=${currentMachineId}&options=${optionsQuery}&days=${days}&start_date=${startDateQuery}&end_date=${endDateQuery}`;
+        }
+
+        function formatDateToISO(date) {
+            if (!date) return '';
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function setPayButtonsEnabled(enabled) {
+            const payButton = document.getElementById('pay-button');
+            const rentedButton = document.getElementById('rented-button');
+            if (payButton) payButton.disabled = !enabled;
+            if (rentedButton) rentedButton.disabled = !enabled;
+        }
+
+        async function checkAvailability(startDate, endDate) {
+            const availabilityMessage = document.getElementById('availability-message');
+            
+            if (!currentMachineId || !startDate || !endDate || endDate <= startDate) {
+                isAvailableForDates = false;
+                setPayButtonsEnabled(false);
+                if (availabilityMessage) {
+                    availabilityMessage.textContent = 'Kies een geldige periode.';
+                    availabilityMessage.style.color = '#a40000';
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                  `/api/machine-availability?machine_id=${encodeURIComponent(currentMachineId)}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`
+                );
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Beschikbaarheid controleren is mislukt.');
+                }
+
+                isAvailableForDates = !!data.available;
+                setPayButtonsEnabled(isAvailableForDates);
+                
+                if (availabilityMessage) {
+                    availabilityMessage.textContent = isAvailableForDates
+                        ? 'Beschikbaar in deze periode.'
+                        : 'Niet beschikbaar in deze periode.';
+                    availabilityMessage.style.color = isAvailableForDates ? '#0d7a2d' : '#a40000';
+                }
+            } catch (error) {
+                isAvailableForDates = false;
+                setPayButtonsEnabled(false);
+                if (availabilityMessage) {
+                    availabilityMessage.textContent = error.message;
+                    availabilityMessage.style.color = '#a40000';
+                }
+            }
+        }
+
+        async function loadBookedDates(machineId) {
+            const bookedContainer = document.getElementById('booked-dates-container');
+            const bookedList = document.getElementById('booked-dates-list');
+            
+            if (!bookedContainer || !bookedList) return;
+
+            try {
+                const response = await fetch(`/api/machine-booked-dates?machine_id=${encodeURIComponent(machineId)}`);
+                const bookings = await response.json();
+
+                if (!response.ok || !Array.isArray(bookings) || bookings.length === 0) {
+                    bookedContainer.style.display = 'none';
+                    return;
+                }
+
+                bookedList.innerHTML = '';
+                bookings.forEach((booking) => {
+                    const li = document.createElement('li');
+                    const startDate = String(booking.start_date || '').slice(0, 10);
+                    const endDate = String(booking.end_date || '').slice(0, 10);
+                    li.textContent = `${startDate} tot ${endDate}`;
+                    bookedList.appendChild(li);
+                });
+
+                bookedContainer.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading booked dates:', error);
+                bookedContainer.style.display = 'none';
             }
         }
 
@@ -198,29 +278,69 @@
                 }
 
                 optionsContainer.innerHTML = '<h3>Opties</h3>' + options.map((opt) => {
-                    const extra = (opt.extra_price !== null && opt.extra_price !== undefined && Number(opt.extra_price) !== 0)
-                        ? ` (+€${Number(opt.extra_price).toFixed(2)})`
-                        : '';
+                    const hasPriceExtra = opt.extra_price !== null && opt.extra_price !== undefined && Number(opt.extra_price) !== 0;
+                    const priceDisplay = hasPriceExtra ? ` (+€${Number(opt.extra_price).toFixed(2)})` : '';
+                    
                     return `
                     <label>
-                        <input type="checkbox" name="machine-option" data-option-id="${opt.option_id}" value="${opt.option_id}" />
-                        ${opt.name}${extra}
+                        <input type="checkbox" 
+                               name="machine-option" 
+                               data-option-id="${opt.option_id}" 
+                               data-extra-price="${opt.extra_price || 0}" 
+                               value="${opt.option_id}" />
+                        ${opt.name}${priceDisplay}
                     </label>`;
                 }).join('<br>');
 
-                // Clear intermediate loading text if it was present.
                 if (loadingEl) loadingEl.remove();
-            } catch (err) {
-                console.error('Error loading options:', err);
+                
+                const checkboxes = optionsContainer.querySelectorAll('input[name="machine-option"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', recalculatePrice);
+                });
+            } catch (error) {
+                console.error('Error loading options:', error);
                 optionsContainer.innerHTML = '<p>Opties konden niet worden geladen.</p>';
             }
         }
 
-        function getSelectedOptionIds() {
-            return Array.from(document.querySelectorAll('input[name="machine-option"]:checked')).map(el => el.dataset.optionId);
+        function recalculatePrice() {
+            const startDateInput = document.getElementById('start-date');
+            const endDateInput = document.getElementById('end-date');
+            
+            if (startDateInput && endDateInput) {
+                const startDate = startDateInput.valueAsDate;
+                const endDate = endDateInput.valueAsDate;
+                
+                if (startDate && endDate && endDate >= startDate) {
+                    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                    const finalDays = Math.max(1, days);
+                    updateTotalPrice(finalDays, currentPricePerDay);
+                }
+            }
         }
 
-        // Load the machine details when the page loads
+        function getSelectedOptionIds() {
+            return Array.from(document.querySelectorAll('input[name="machine-option"]:checked'))
+              .map(element => element.dataset.optionId);
+        }
+
+        function calculateTotalPrice(days, pricePerDay) {
+            const baseCost = pricePerDay * days;
+            
+            const optionsTotal = Array.from(document.querySelectorAll('input[name="machine-option"]:checked'))
+                .reduce((sum, checkbox) => sum + (Number(checkbox.dataset.extraPrice) || 0), 0);
+            
+            return Math.round(baseCost + optionsTotal);
+        }
+
+        function updateTotalPrice(days, pricePerDay) {
+            if (days && pricePerDay !== null) {
+                const total = calculateTotalPrice(days, pricePerDay);
+                document.getElementById('total-price-display').textContent = `Totaal: €${total}`;
+            }
+        }
+
         loadMachineDetail();
     </script>
 </body>
